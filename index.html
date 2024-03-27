@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+    <!--
+  此應用程式示範如何使用觸控事件觸摸事件類型 (touchstart,
+  touchmove, touchcancel and touchend) for the following interaction:
+   1. Single touch (單點觸摸)
+   2. Two (simultaneous) touches (雙點同時觸摸)
+   3. More than two simultaneous touches (雙點以上同時觸摸)
+   4. 1-finger swipe (單指滑動)
+   5. 2-finger move/pinch/swipe (雙指捏和、移動、滑動)
+-->
+    <head>
+        <title>觸摸事件Demo</title>
+        <!-- <meta name="viewport" content="width=device-width" /> -->
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <style>
+            #target1,
+            #target2,
+            #target3,
+            #target4 {
+                margin: 0rem;
+                padding: 2rem;
+                background: white;
+                border: 1px solid black;
+                height: 300px;
+                margin-bottom: 2rem;
+                position: relative;
+            }
+
+            .points {
+                background-color: red;
+                width: 5px;
+                height: 5px;
+                position: absolute;
+                border-radius: 50px;
+            }
+            .bg-blue {
+                background-color: blue !important;
+            }
+        </style>
+
+        <script>
+            // Log events flag
+            let logEvents = false
+
+            // Touch Point cache
+            let tpCache = new Array()
+
+            // 鑰匙陣列
+            const KEY_POINTS_ARRAY = [[0,0],[0,200],[200,0],[200,200]]
+            const TOUCH_FUZZY = 5
+
+            // 啟用log
+            function enableLog(ev) {
+                logEvents = logEvents ? false : true
+            }
+
+            // 紀錄日誌
+            function log(name, ev, printTargetIds) {
+                var o = document.getElementsByTagName('output')[0]
+                var s =
+                    name +
+                    ': touches = ' +
+                    ev.touches.length +
+                    ' ; targetTouches = ' +
+                    ev.targetTouches.length +
+                    ' ; changedTouches = ' +
+                    ev.changedTouches.length
+                o.innerHTML += s + ' <br>'
+
+                if (printTargetIds) {
+                    s = ''
+                    for (var i = 0; i < ev.targetTouches.length; i++) {
+                        s += '... id = ' + ev.targetTouches[i].identifier + ' <br>'
+                    }
+                    o.innerHTML += s
+                }
+            }
+
+            // 清除log
+            function clearLog(event) {
+                var o = document.getElementsByTagName('output')[0]
+                o.innerHTML = ''
+            }
+
+            // 根據不同的觸控模式切換被景色
+            function update_background(ev) {
+                // 根據同時觸碰的數量變更背景顏色
+                //   yellow - 單點觸控
+                //   pink - 雙點觸控
+                //   lightblue - 多點觸控
+                switch (ev.targetTouches.length) {
+                    case 1:
+                        // 單點觸控
+                        ev.target.style.background = 'yellow'
+                        break
+                    case 2:
+                        // 雙點觸控
+                        ev.target.style.background = 'pink'
+                        break
+                    default:
+                        // 多點觸控
+                        ev.target.style.background = 'lightblue'
+                }
+            }
+
+            // 這是一個非常基本的 2 點觸控移動/捏合/縮放處理程序，不包括
+            // 錯誤處理，僅處理水平移動等。
+            function handle_pinch_zoom(ev) {
+                if (ev.targetTouches.length == 2 && ev.changedTouches.length == 2) {
+                    // 檢查兩個目標觸控是否與開始的觸控相同
+                    // 2次觸控
+                    var point1 = -1,
+                        point2 = -1
+                    for (var i = 0; i < tpCache.length; i++) {
+                        if (tpCache[i].identifier == ev.targetTouches[0].identifier) point1 = i
+                        if (tpCache[i].identifier == ev.targetTouches[1].identifier) point2 = i
+                    }
+                    if (point1 >= 0 && point2 >= 0) {
+                        // 計算起始座標和移動座標之間的差
+                        var diff1 = Math.abs(tpCache[point1].clientX - ev.targetTouches[0].clientX)
+                        var diff2 = Math.abs(tpCache[point2].clientX - ev.targetTouches[1].clientX)
+
+                        // 此值取決於裝置以及特定於應用程式
+                        var PINCH_THRESHHOLD = ev.target.clientWidth / 10
+                        if (diff1 >= PINCH_THRESHHOLD && diff2 >= PINCH_THRESHHOLD)
+                            ev.target.style.background = 'green'
+                    } else {
+                        // empty tpCache
+                        tpCache = new Array()
+                    }
+                }
+            }
+
+            function start_handler(ev) {
+                // 如果使用者同時觸摸，瀏覽器將觸發
+                // 每個觸控點都有單獨的 touchstart 事件。 因此如果有
+                // 三個同時觸摸，第一個 touchstart 事件將有
+                // targetTouches 長度為一，第二個事件將有一個長度
+                // 兩個，依此類推。
+                ev.preventDefault()
+                // 快取觸摸點以供以後處理兩點觸摸捏合/縮放
+                if (ev.targetTouches.length == 2) {
+                    for (var i = 0; i < ev.targetTouches.length; i++) {
+                        tpCache.push(ev.targetTouches[i])
+                    }
+                }
+                if (logEvents) log('touchStart', ev, true)
+                update_background(ev)
+
+                // 顯示觸控點
+                showTouchPoints(ev)
+                checkSeal(ev)
+            }
+
+            function move_handler(ev) {
+                // 注意：如果使用者進行多次「同時」觸摸，大多數瀏覽器
+                // 至少觸發一個 touchmove 事件，有些會觸發多個 touchmove。
+                // 因此，應用程式可能想要「忽略」某些觸控移動。
+                //
+                // 此函數將目標元素的輪廓設為「虛線」以便直觀
+                // 指示目標收到移動事件。
+                //
+                ev.preventDefault()
+                if (logEvents) log('touchMove', ev, false)
+                // 為了避免過多的顏色閃爍，啟動了許多 touchmove 事件，
+                // 如果兩個觸控點處於活動狀態，則不更新背景
+                if (!(ev.touches.length == 2 && ev.targetTouches.length == 2)) update_background(ev)
+
+                // 將目標元素的輪廓設為虛線以提供清晰的視覺效果
+                // 指示元素收到移動事件。
+                ev.target.style.outline = 'dashed'
+
+                // 檢查此事件以獲取 2 點觸控移動/捏合/縮放手勢
+                handle_pinch_zoom(ev)
+            }
+
+            function end_handler(ev) {
+                ev.preventDefault()
+                if (logEvents) log(ev.type, ev, false)
+                if (ev.targetTouches.length == 0) {
+                    // 將背景和輪廓恢復為原始值
+                    ev.target.style.background = 'white'
+                    ev.target.style.outline = '1px solid black'
+                }
+                clearCoordinates()
+            }
+
+            function set_handlers(name) {
+                // 綁訂觸控事件處理
+                var el = document.getElementById(name)
+                el.ontouchstart = start_handler // 觸控開始
+                el.ontouchmove = move_handler // 觸控滑動
+                el.ontouchcancel = end_handler // 觸控取消
+                el.ontouchend = end_handler // 觸控結束
+            }
+
+            function init() {
+                set_handlers('target1')
+                // set_handlers("target2");
+                // set_handlers("target3");
+                // set_handlers("target4");
+            }
+
+            // 模擬多點觸控
+            function fakeTouch() {
+                const el = document.getElementById('target1')
+                const type = 'touchstart'
+                const touches = KEY_POINTS_ARRAY.map((e, key) => ({
+                  id: key,
+                  x: e[0] + 100,
+                  y: e[1] + 100
+                }))
+
+                console.log(touches)
+
+                simulateTouchEvent(el, type, touches)
+            }
+
+            /**
+             * @desc 它觸發觸摸事件。 也支援多個觸摸事件。
+             * @param {HTMLElement} 元素目標 DOM 元素
+             * @param {string} type 事件類型
+             * @param {Array} 觸及事件的 {x, y, id} 位置和標識符
+             */
+            function simulateTouchEvent(element, type, touches) {
+                const touchEvents = []
+
+                touches.forEach(touch => {
+                    touchEvents.push(
+                        new Touch({
+                            clientX: touch.x,
+                            clientY: touch.y,
+                            identifier: touch.id,
+                            target: element
+                        })
+                    )
+                })
+
+                element.dispatchEvent(
+                    new TouchEvent(type, {
+                        touches: touchEvents,
+                        view: window,
+                        cancelable: true,
+                        bubbles: true
+                    })
+                )
+            }
+
+            // 確認印章
+            function checkSeal(ev) {
+                const el = document.getElementById('target1')
+                // [[x,y]...]
+                let pointsArray = new Array(...ev.touches).map(e => [e.clientX, e.clientY])
+
+                console.log(pointsArray)
+                if(compareRelativeDistances(KEY_POINTS_ARRAY, pointsArray, TOUCH_FUZZY)) alert('兌換成功!')
+            }
+
+            // 顯示觸控點
+            function showTouchPoints(ev) {
+                let pointsArray = new Array(...ev.touches).map(e => [e.clientX, e.clientY])
+                pointsArray.forEach(e => displayCoordinates(ev.target, e[0], e[1], ['bg-blue']))
+            }
+
+            function findCenterPoint(points) {
+                let sum_x = 0
+                let sum_y = 0
+                for (let i = 0; i < points.length; i++) {
+                    sum_x += points[i][0]
+                    sum_y += points[i][1]
+                }
+                const center_x = sum_x / points.length
+                const center_y = sum_y / points.length
+                return [center_x, center_y]
+            }
+
+            // 顯示座標
+            function displayCoordinates(element, x, y, classNames = []) {
+                let newDiv = document.createElement('div')
+                newDiv.classList.add('points')
+                if (classNames.length > 0) newDiv.classList.add(...classNames)
+                newDiv.style.left = x + 'px'
+                newDiv.style.top = y + 'px'
+
+                element.appendChild(newDiv)
+            }
+
+            // 清除座標顯示
+            function clearCoordinates() {
+                const pointsElement = document.querySelectorAll('.points').forEach(e => e.remove())
+            }
+
+            // 比較兩個座標陣列的相對位置是否一樣
+            function compareRelativeDistances(coords1, coords2, fuzzy) {
+                // 計算各個座標點之間的相對距離
+                const distances1 = calculateRelativeDistances(coords1)
+                const distances2 = calculateRelativeDistances(coords2)
+
+                // 對相對距離數組進行排序
+                distances1.sort((a, b) => a - b)
+                distances2.sort((a, b) => a - b)
+
+                // 比較排序後的相對距離數組是否完全相同
+                return compareArraysWithTolerance(distances1, distances2, fuzzy)
+            }
+
+            // 計算各座標點之間的相對距離
+            function calculateRelativeDistances(coords) {
+                const distances = []
+                for (let i = 0; i < coords.length; i++) {
+                    for (let j = i + 1; j < coords.length; j++) {
+                        const distance = Math.sqrt(
+                            Math.pow(coords[i][0] - coords[j][0], 2) +
+                                Math.pow(coords[i][1] - coords[j][1], 2)
+                        )
+                        distances.push(distance)
+                    }
+                }
+                return distances
+            }
+
+            function compareArraysWithTolerance(arr1, arr2, tolerance) {
+                // 確保兩個數組的長度相同
+                if (arr1.length !== arr2.length) {
+                    return false
+                }
+
+                // 比較各位置的數字，看是否在允許的誤差範圍內
+                for (let i = 0; i < arr1.length; i++) {
+                    // 計算兩個數字之間的差
+                    const diff = Math.abs(arr1[i] - arr2[i])
+                    // 如果差異大於容差，則傳回 false
+                    if (diff > tolerance) {
+                        return false
+                    }
+                }
+
+                // 如果所有位置的數字都在允許的誤差範圍內，則傳回 true
+                return true
+            }
+
+            // 範例
+            const coordinates1 = [
+                [0, 0],
+                [100, 0],
+                [200, 0],
+                [0, 100],
+                [200, 100]
+            ]
+            const coordinates2 = [
+                [100, 100],
+                [100, 200],
+                [200, 100],
+                [100, 300],
+                [200, 300]
+            ]
+
+            console.log(compareRelativeDistances(coordinates1, coordinates2, 5))
+        </script>
+    </head>
+    <body onload="init();">
+        <!-- Create some boxes to test various gestures. -->
+        <div id="target1">摸我!</div>
+        <!-- <div id="target2">Tap, Hold or Swipe me 2</div>
+        <div id="target3">Tap, Hold or Swipe me 3</div>
+        <div id="target4">Tap, Hold or Swipe me 4</div> -->
+        <h1>多點觸控範例</h1>
+
+        <!-- UI for logging/debugging -->
+        <button id="log" onclick="enableLog(event)">顯示log</button>
+        <button id="clearlog" onclick="clearLog(event)">清除log</button>
+        <button onclick="fakeTouch()">模擬印章</button>
+        <button onclick="clearCoordinates()">清除模擬印章</button>
+        <p></p>
+        <output></output>
+    </body>
+</html>
