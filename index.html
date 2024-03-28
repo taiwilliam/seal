@@ -47,7 +47,11 @@
             let tpCache = new Array()
 
             // 鑰匙陣列
-            const KEY_POINTS_ARRAY = [[0,0],[0,200]]
+            const KEY_POINTS_ARRAY = [
+                [0, 0],
+                [200, 0],
+                [0, 200]
+            ]
             const TOUCH_FUZZY = 5
 
             // function setKey(){
@@ -86,7 +90,8 @@
 
                 arr.forEach((v, i) => {
                     elChild = document.createElement('div')
-                    elChild.innerHTML += `${i} touch x: ${v[0].toFixed(2)}, y: ${v[1].toFixed(2)}` + ' <br>'
+                    elChild.innerHTML +=
+                        `${i} touch x: ${v[0].toFixed(2)}, y: ${v[1].toFixed(2)}` + ' <br>'
                     o.insertBefore(elChild, o.firstChild)
                 })
             }
@@ -221,9 +226,9 @@
                 const el = document.getElementById('target1')
                 const type = 'touchstart'
                 const touches = KEY_POINTS_ARRAY.map((e, key) => ({
-                  id: key,
-                  x: e[0] + 100,
-                  y: e[1] + 100
+                    id: key,
+                    x: e[0] + 100,
+                    y: e[1] + 100
                 }))
 
                 console.log(touches)
@@ -269,7 +274,8 @@
 
                 if (logEvents) log_(pointsArray)
                 // console.log(pointsArray)
-                if(compareRelativeDistances(KEY_POINTS_ARRAY, pointsArray, TOUCH_FUZZY)) alert('兌換成功!')
+                if (compareRelativeDistanceRatios(KEY_POINTS_ARRAY, pointsArray, TOUCH_FUZZY))
+                    alert('兌換成功!')
             }
 
             // 顯示觸控點
@@ -278,6 +284,7 @@
                 pointsArray.forEach(e => displayCoordinates(ev.target, e[0], e[1], ['bg-blue']))
             }
 
+            // 尋找中心點
             function findCenterPoint(points) {
                 let sum_x = 0
                 let sum_y = 0
@@ -307,7 +314,7 @@
             }
 
             // 比較兩個座標陣列的相對位置是否一樣
-            function compareRelativeDistances(coords1, coords2, fuzzy) {
+            function compareRelativeDistanceRatios(coords1, coords2, fuzzy) {
                 // 計算各個座標點之間的相對距離
                 const distances1 = calculateRelativeDistances(coords1)
                 const distances2 = calculateRelativeDistances(coords2)
@@ -316,8 +323,13 @@
                 distances1.sort((a, b) => a - b)
                 distances2.sort((a, b) => a - b)
 
+                // 取兩個陣列的比值
+                let distances1_ratio = getRelativeValues(distances1)
+                let distances2_ratio = getRelativeValues(distances2)
+                let fuzzy_ratio = fuzzy / distances2?.[0]
+
                 // 比較排序後的相對距離數組是否完全相同
-                return compareArraysWithTolerance(distances1, distances2, fuzzy)
+                return compareArraysWithTolerance(distances1_ratio, distances2_ratio, fuzzy_ratio)
             }
 
             // 計算各座標點之間的相對距離
@@ -341,7 +353,7 @@
                     return false
                 }
 
-                // 比較各位置的數字，看是否在允許的誤差範圍內
+                // // 比較各位置的數字，看是否在允許的誤差範圍內
                 for (let i = 0; i < arr1.length; i++) {
                     // 計算兩個數字之間的差
                     const diff = Math.abs(arr1[i] - arr2[i])
@@ -353,6 +365,19 @@
 
                 // 如果所有位置的數字都在允許的誤差範圍內，則傳回 true
                 return true
+            }
+
+            // 取得一個陣列相對於第一個元素的比值
+            function getRelativeValues(arr) {
+                var relativeValues = []
+                var baseValue = arr[0] // 第一個元素作為基準值
+
+                // 將每個元素除以基準值，得到相對比值
+                for (var i = 0; i < arr.length; i++) {
+                    relativeValues.push(arr[i] / baseValue)
+                }
+
+                return relativeValues
             }
 
             // 範例
