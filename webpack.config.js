@@ -3,10 +3,10 @@ const HTMLWebpackPlugin = require('html-webpack-plugin')
 
 module.exports = {
     devServer: {
-        static: './src'
+        static: './'
     },
     resolve: {
-        alias: { '@': path.join(__dirname, 'src') }
+        alias: { '@': path.join(__dirname, '/') }
     },
     module: {
         rules: [

@@ -47,8 +47,12 @@
             let tpCache = new Array()
 
             // 鑰匙陣列
-            const KEY_POINTS_ARRAY = [[0,0],[0,200],[200,0],[200,200]]
+            const KEY_POINTS_ARRAY = [[0,0],[0,200],[200,0]]
             const TOUCH_FUZZY = 5
+
+            // function setKey(){
+
+            // }
 
             // 啟用log
             function enableLog(ev) {
@@ -75,6 +79,16 @@
                     }
                     o.innerHTML += s
                 }
+            }
+
+            function log_(arr) {
+                var o = document.getElementsByTagName('output')[0]
+
+                arr.forEach((v, i) => {
+                    elChild = document.createElement('div')
+                    elChild.innerHTML += `${i} touch x: ${v[0].toFixed(2)}, y: ${v[1].toFixed(2)}` + ' <br>'
+                    o.insertBefore(elChild, o.firstChild)
+                })
             }
 
             // 清除log
@@ -145,7 +159,7 @@
                         tpCache.push(ev.targetTouches[i])
                     }
                 }
-                if (logEvents) log('touchStart', ev, true)
+                // if (logEvents) log('touchStart', ev, true)
                 update_background(ev)
 
                 // 顯示觸控點
@@ -162,7 +176,7 @@
                 // 指示目標收到移動事件。
                 //
                 ev.preventDefault()
-                if (logEvents) log('touchMove', ev, false)
+                // if (logEvents) log('touchMove', ev, false)
                 // 為了避免過多的顏色閃爍，啟動了許多 touchmove 事件，
                 // 如果兩個觸控點處於活動狀態，則不更新背景
                 if (!(ev.touches.length == 2 && ev.targetTouches.length == 2)) update_background(ev)
@@ -177,7 +191,7 @@
 
             function end_handler(ev) {
                 ev.preventDefault()
-                if (logEvents) log(ev.type, ev, false)
+                // if (logEvents) log(ev.type, ev, false)
                 if (ev.targetTouches.length == 0) {
                     // 將背景和輪廓恢復為原始值
                     ev.target.style.background = 'white'
@@ -253,7 +267,8 @@
                 // [[x,y]...]
                 let pointsArray = new Array(...ev.touches).map(e => [e.clientX, e.clientY])
 
-                console.log(pointsArray)
+                if (logEvents) log_(pointsArray)
+                // console.log(pointsArray)
                 if(compareRelativeDistances(KEY_POINTS_ARRAY, pointsArray, TOUCH_FUZZY)) alert('兌換成功!')
             }
 
@@ -355,8 +370,6 @@
                 [100, 300],
                 [200, 300]
             ]
-
-            console.log(compareRelativeDistances(coordinates1, coordinates2, 5))
         </script>
     </head>
     <body onload="init();">
@@ -372,6 +385,8 @@
         <button id="clearlog" onclick="clearLog(event)">清除log</button>
         <button onclick="fakeTouch()">模擬印章</button>
         <button onclick="clearCoordinates()">清除模擬印章</button>
+
+        <!-- <button onclick="setKey()">自訂印章</button> -->
         <p></p>
         <output></output>
     </body>
