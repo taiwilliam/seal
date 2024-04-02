@@ -53,7 +53,8 @@
                 [113, 293.54],
                 [212.75, 281.71]
             ]
-            const TOUCH_FUZZY = 10
+            const TOUCH_FUZZY = 15
+            const KEY_COUNT = 4
 
             // function setKey(){
 
@@ -62,6 +63,11 @@
             // 啟用log
             function enableLog(ev) {
                 logEvents = logEvents ? false : true
+            }
+
+            // 顯示
+            function getInputKey() {
+                console.log(INPUT_KEY)
             }
 
             // 紀錄日誌
@@ -87,6 +93,7 @@
             }
 
             function log_(arr) {
+                // if(arr.length !== KEY_COUNT) return
                 var o = document.getElementsByTagName('output')[0]
 
                 arr.forEach((v, i) => {
@@ -275,6 +282,7 @@
 
                 if (logEvents) log_(pointsArray)
                 // console.log(pointsArray)
+
                 if (compareRelativeDistanceRatios(KEY_POINTS_ARRAY, pointsArray, TOUCH_FUZZY))
                     alert('兌換成功!')
             }
@@ -316,9 +324,12 @@
 
             // 比較兩個座標陣列的相對位置是否一樣
             function compareRelativeDistanceRatios(coords1, coords2, fuzzy) {
+                console.log(coords1, coords2)
                 // 計算各個座標點之間的相對距離
                 const distances1 = calculateRelativeDistances(coords1)
                 const distances2 = calculateRelativeDistances(coords2)
+
+                console.log(distances1, distances2)
 
                 // 對相對距離數組進行排序
                 distances1.sort((a, b) => a - b)
